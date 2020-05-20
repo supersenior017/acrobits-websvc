@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	Version = "0.0.1"
+	Version = "0.0.2"
 
-	DefaultPath     = "/acrobits-balance"
+	DefaultPath     = "/acrobits/balance"
 	DefaultAddr     = "127.0.0.1:8080"
 	DefaultCurrency = "USD"
 

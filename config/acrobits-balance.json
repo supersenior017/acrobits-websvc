@@ -1,5 +1,5 @@
 {
-  "path": "/acrobits-balance",
+  "path": "/acrobits/balance",
   "addr": "127.0.0.1:8080",
   "currency": "USD",
   "key_file": "",
