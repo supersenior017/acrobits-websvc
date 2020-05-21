@@ -1,7 +1,7 @@
 # acrobits-balance
 
 Acrobits balance checker web service. You must overwrite 
-`getBalance(username, password string) (float64, error)` function in main.go 
+`getBalance(username, password string) (float64, error)` function in `main.go` 
 file.
 
 [Doc](https://doc.acrobits.net/api/client/balance_checker.html)
