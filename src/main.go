@@ -11,9 +11,7 @@ import (
 
 const (
 	FlagConfig = "c"
-
-	ExOk     = 0
-	ExArgErr = 2
+	ExOk       = 0
 )
 
 type Opts struct {
@@ -35,9 +33,9 @@ func parseArgs() *Opts {
 		os.Exit(ExOk)
 	}
 	if opts.config.FilePath() == "" {
-		fmt.Fprintf(os.Stderr, "-%s required\n", FlagConfig)
-		os.Exit(ExArgErr)
+		opts.config.SetDefaults()
 	}
+	opts.config.Func = getBalance
 	return opts
 }
 
@@ -47,7 +45,6 @@ func getBalance(username, password string) (float64, error) {
 
 func main() {
 	opts := parseArgs()
-	opts.config.Func = getBalance
 	log.Println("Starting on:", opts.config.Addr)
 	log.Fatalln(acrobitsbalance.ListenAndServe(opts.config))
 }

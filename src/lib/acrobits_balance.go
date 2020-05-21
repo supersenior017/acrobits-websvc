@@ -10,7 +10,12 @@ import (
 )
 
 const (
-	Version = "0.0.2"
+	Version = "0.0.3"
+
+	envPrefix   = "ACROBITS_BALANCE_"
+	EnvPath     = envPrefix + "PATH"
+	EnvAddr     = envPrefix + "ADDR"
+	EnvCurrency = envPrefix + "CURRENCY"
 
 	DefaultPath     = "/acrobits/balance"
 	DefaultAddr     = "127.0.0.1:8080"
@@ -71,14 +76,27 @@ func (c *Config) Set(s string) error {
 	if err = json.NewDecoder(file).Decode(c); err != nil {
 		return err
 	}
+	c.SetDefaults()
+	c.path = s
+	return nil
+}
+
+func (c *Config) SetDefaults() {
+	getenv := func(s, def string) string {
+		res := os.Getenv(s)
+		if res == "" {
+			return def
+		}
+		return res
+	}
 	if c.Path == "" {
-		c.Path = DefaultPath
+		c.Path = getenv(EnvPath, DefaultPath)
 	}
 	if c.Addr == "" {
-		c.Addr = DefaultAddr
+		c.Addr = getenv(EnvAddr, DefaultAddr)
 	}
 	if c.Currency == "" {
-		c.Currency = DefaultCurrency
+		c.Currency = getenv(EnvCurrency, DefaultCurrency)
 	}
 	if c.ReadTimeout == nil {
 		readTimeout := DefaultReadTimeout
@@ -92,8 +110,6 @@ func (c *Config) Set(s string) error {
 		idleTimeout := DefaultIdleTimeout
 		c.IdleTimeout = &idleTimeout
 	}
-	c.path = s
-	return nil
 }
 
 func (c Config) FilePath() string {
