@@ -25,5 +25,5 @@ Usage of acrobits-balance:
 
 To default run:
 ```sh
-$ acrobits-balance -c ~/acrobits-balance.json
+$ acrobits-balance
 ```
