@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 
 	acrobitsbalance "./lib"
 )
@@ -45,6 +48,20 @@ func getBalance(username, password string) (float64, error) {
 
 func main() {
 	opts := parseArgs()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		defer signal.Stop(sigint)
+		<-sigint
+		cancel()
+	}()
 	log.Println("Starting on:", opts.config.Addr)
-	log.Fatalln(acrobitsbalance.ListenAndServe(opts.config))
+	if err := acrobitsbalance.ListenAndServe(
+		ctx,
+		opts.config,
+	); err != nil && err != http.ErrServerClosed {
+		log.Fatalln(err)
+	}
 }

@@ -1,6 +1,7 @@
 package acrobitsbalance
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.0.3"
+	Version = "0.0.4"
 
 	envPrefix   = "ACROBITS_BALANCE_"
 	EnvPath     = envPrefix + "PATH"
@@ -143,7 +144,7 @@ func makeHandleFunc(c *Config) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func ListenAndServe(c Config) error {
+func ListenAndServe(ctx context.Context, c Config) error {
 	http.HandleFunc(c.Path, makeHandleFunc(&c))
 	s := &http.Server{
 		Addr:           c.Addr,
@@ -152,8 +153,23 @@ func ListenAndServe(c Config) error {
 		IdleTimeout:    *c.IdleTimeout,
 		MaxHeaderBytes: 1 << 12,
 	}
-	if c.CertFile != "" && c.KeyFile != "" {
-		return s.ListenAndServeTLS(c.CertFile, c.KeyFile)
+	errchan := make(chan error, 1)
+	go func() {
+		if c.CertFile != "" && c.KeyFile != "" {
+			errchan <- s.ListenAndServeTLS(c.CertFile, c.KeyFile)
+		} else {
+			errchan <- s.ListenAndServe()
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			*c.IdleTimeout,
+		)
+		defer cancel()
+		return s.Shutdown(ctx)
+	case err := <-errchan:
+		return err
 	}
-	return s.ListenAndServe()
 }
