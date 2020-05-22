@@ -1,6 +1,6 @@
 {
   "path": "/acrobits/balance",
-  "addr": "127.0.0.1:8080",
+  "addr": ":8080",
   "currency": "USD",
   "key_file": "",
   "cert_file": ""
