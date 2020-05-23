@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    image: acrobits-balance
+    container_name: acrobits_balance
+    command: ["-c", "/config/acrobits-balance.json"]
+    ports:
+      - 8080:8080
+    volumes:
+      - ./config/:/config/:ro
