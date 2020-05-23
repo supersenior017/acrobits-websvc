@@ -1,8 +1,16 @@
 # acrobits-balance
 
 Acrobits balance checker web service. You must overwrite 
-`getBalance(username, password string) (float64, error)` function in `main.go` 
-file.
+```go
+func getBalance(
+	ctx context.Context,
+	username string,
+	password string,
+) (float64, error) {
+	return 0, fmt.Errorf("NotImplemented")
+}
+``` 
+in `main.go` file.
 
 [Doc](https://doc.acrobits.net/api/client/balance_checker.html)
 
@@ -10,6 +18,10 @@ file.
 ```sh
 $ make
 $ make install
+```
+or
+```sh
+$ docker build -t acrobits-balance "."
 ```
 
 ## Usage
@@ -23,7 +35,22 @@ Usage of acrobits-balance:
 
 ## Example
 
-To default run:
+To test run:
 ```sh
 $ acrobits-balance
+```
+
+To config run:
+```sh
+$ acrobits-balance -c /usr/local/etc/acrobits-balance.json
+```
+
+To docker run:
+```sh
+$ docker run -d -p 8080:8080 acrobits-balance
+```
+
+To docker config run:
+```sh
+$ docker run -d -p 8080:8080 acrobits-balance -c config.json
 ```
