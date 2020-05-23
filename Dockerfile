@@ -6,14 +6,12 @@ RUN CGO_ENABLED=0 go build -o ./main
 
 FROM scratch
 
-COPY --from=0 /etc/ssl/certs/ /etc/ssl/certs/
-COPY --from=0 /etc/passwd /etc/passwd
-COPY --from=0 /etc/group /etc/group
+COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=0 /etc/passwd /etc/group /etc/
+COPY --from=0 /build/main /
+
 USER nobody:nogroup
 STOPSIGNAL SIGINT
-
-COPY --from=0 /build/main /
-COPY ./config/acrobits-balance.json /config.json
 
 ENV port 8080
 ENV ACROBITS_BALANCE_PATH /acrobits/balance
