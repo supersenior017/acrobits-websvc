@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.0.4"
+	Version = "0.0.5"
 
 	envPrefix   = "ACROBITS_BALANCE_"
 	EnvPath     = envPrefix + "PATH"
@@ -22,9 +22,10 @@ const (
 	DefaultAddr     = "127.0.0.1:8080"
 	DefaultCurrency = "USD"
 
-	DefaultReadTimeout  = 5 * time.Second
-	DefaultWriteTimeout = 5 * time.Second
-	DefaultIdleTimeout  = 30 * time.Second
+	DefaultReadTimeout    = 5 * time.Second
+	DefaultWriteTimeout   = DefaultReadTimeout
+	DefaultIdleTimeout    = 30 * time.Second
+	DefaultHandlerTimeout = DefaultIdleTimeout
 
 	ArgStdin = "-"
 )
@@ -45,17 +46,20 @@ func newXmlResponse(balance float64, currency string) *xmlResponse {
 	return r
 }
 
+type GetBalance func(context.Context, string, string) (float64, error)
+
 type Config struct {
-	Path         string                                `json:"path"`
-	Addr         string                                `json:"addr"`
-	Currency     string                                `json:"currency"`
-	CertFile     string                                `json:"cert_file"`
-	KeyFile      string                                `json:"key_file"`
-	ReadTimeout  *time.Duration                        `json:"read_timeout"`
-	WriteTimeout *time.Duration                        `json:"write_timeout"`
-	IdleTimeout  *time.Duration                        `json:"idle_timeout"`
-	Func         func(string, string) (float64, error) `json:"-"`
-	path         string
+	Path           string         `json:"path"`
+	Addr           string         `json:"addr"`
+	Currency       string         `json:"currency"`
+	CertFile       string         `json:"cert_file"`
+	KeyFile        string         `json:"key_file"`
+	ReadTimeout    *time.Duration `json:"read_timeout"`
+	WriteTimeout   *time.Duration `json:"write_timeout"`
+	IdleTimeout    *time.Duration `json:"idle_timeout"`
+	HandlerTimeout *time.Duration `json:"handler_timeout"`
+	Func           GetBalance     `json:"-"`
+	path           string
 }
 
 func (c Config) String() string {
@@ -111,6 +115,10 @@ func (c *Config) SetDefaults() {
 		idleTimeout := DefaultIdleTimeout
 		c.IdleTimeout = &idleTimeout
 	}
+	if c.HandlerTimeout == nil {
+		handlerTimeout := DefaultHandlerTimeout
+		c.HandlerTimeout = &handlerTimeout
+	}
 }
 
 func (c Config) FilePath() string {
@@ -130,7 +138,7 @@ func makeHandleFunc(c *Config) func(http.ResponseWriter, *http.Request) {
 			)
 			return
 		}
-		balance, err := c.Func(username, password)
+		balance, err := c.Func(r.Context(), username, password)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
@@ -152,6 +160,11 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		WriteTimeout:   *c.WriteTimeout,
 		IdleTimeout:    *c.IdleTimeout,
 		MaxHeaderBytes: 1 << 12,
+		Handler: http.TimeoutHandler(
+			http.DefaultServeMux,
+			*c.HandlerTimeout,
+			"",
+		),
 	}
 	errchan := make(chan error, 1)
 	go func() {
@@ -165,7 +178,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(
 			context.Background(),
-			*c.IdleTimeout,
+			*c.HandlerTimeout,
 		)
 		defer cancel()
 		return s.Shutdown(ctx)

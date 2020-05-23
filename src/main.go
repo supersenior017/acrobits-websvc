@@ -42,8 +42,12 @@ func parseArgs() *Opts {
 	return opts
 }
 
-func getBalance(username, password string) (float64, error) {
-	return 0, nil
+func getBalance(
+	ctx context.Context,
+	username string,
+	password string,
+) (float64, error) {
+	return 0, fmt.Errorf("NotImplemented")
 }
 
 func main() {
