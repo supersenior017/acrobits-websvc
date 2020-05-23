@@ -50,7 +50,7 @@ To docker run:
 $ docker run -d -p 8080:8080 acrobits-balance
 ```
 
-To docker config run:
+To docker config run (in folder):
 ```sh
-$ docker run -d -p 8080:8080 acrobits-balance -c config.json
+$ docker-compose up -d
 ```
