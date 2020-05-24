@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	FlagConfig = "c"
-	ExOk       = 0
+	FlagConfig  = "c"
+	ExitSuccess = 0
 )
 
 type Opts struct {
@@ -29,16 +29,16 @@ func parseArgs() *Opts {
 	flag.Parse()
 	if *isHelp {
 		flag.Usage()
-		os.Exit(ExOk)
+		os.Exit(ExitSuccess)
 	}
 	if *isVersion {
 		fmt.Println(acrobitsbalance.Version)
-		os.Exit(ExOk)
+		os.Exit(ExitSuccess)
 	}
-	if opts.config.FilePath() == "" {
+	if !opts.config.IsSet() {
 		opts.config.SetDefaults()
 	}
-	opts.config.Func = getBalance
+	opts.config.GetBalance = getBalance
 	return opts
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.0.5"
+	Version = "0.1.0"
 
 	envPrefix   = "ACROBITS_BALANCE_"
 	EnvPath     = envPrefix + "PATH"
@@ -26,24 +26,37 @@ const (
 	DefaultWriteTimeout   = DefaultReadTimeout
 	DefaultIdleTimeout    = 30 * time.Second
 	DefaultHandlerTimeout = DefaultIdleTimeout
-
-	ArgStdin = "-"
 )
 
-type xmlResponse struct {
+type responseOK struct {
 	XMLName       xml.Name `xml:"response"`
 	BalanceString string   `xml:"balanceString"`
 	Balance       float64  `xml:"balance"`
 	Currency      string   `xml:"currency"`
 }
 
-func newXmlResponse(balance float64, currency string) *xmlResponse {
-	r := &xmlResponse{}
+func writeResponseOK(
+	w http.ResponseWriter,
+	balance float64,
+	currency string,
+) error {
+	r := &responseOK{}
 	r.BalanceString = currency + " " +
 		strconv.FormatFloat(balance, 'G', -1, 64)
 	r.Balance = balance
 	r.Currency = currency
-	return r
+	return xml.NewEncoder(w).Encode(r)
+}
+
+type responseError struct {
+	XMLName xml.Name `xml:"error"`
+	Message string   `xml:"message"`
+}
+
+func writeResponseError(w http.ResponseWriter, msg string) error {
+	r := &responseError{}
+	r.Message = msg
+	return xml.NewEncoder(w).Encode(r)
 }
 
 type GetBalance func(context.Context, string, string) (float64, error)
@@ -58,18 +71,18 @@ type Config struct {
 	WriteTimeout   *time.Duration `json:"write_timeout"`
 	IdleTimeout    *time.Duration `json:"idle_timeout"`
 	HandlerTimeout *time.Duration `json:"handler_timeout"`
-	Func           GetBalance     `json:"-"`
-	path           string
+	GetBalance     GetBalance     `json:"-"`
+	isSet          bool
 }
 
-func (c Config) String() string {
+func (c *Config) String() string {
 	return ""
 }
 
 func (c *Config) Set(s string) error {
 	var file *os.File
 	var err error
-	if s == ArgStdin {
+	if s == "-" {
 		file = os.Stdin
 	} else {
 		file, err = os.Open(s)
@@ -82,7 +95,7 @@ func (c *Config) Set(s string) error {
 		return err
 	}
 	c.SetDefaults()
-	c.path = s
+	c.isSet = true
 	return nil
 }
 
@@ -121,40 +134,38 @@ func (c *Config) SetDefaults() {
 	}
 }
 
-func (c Config) FilePath() string {
-	return c.path
+func (c *Config) IsSet() bool {
+	return c.isSet
+}
+
+func httpError(w http.ResponseWriter, msg string, code int) {
+	w.WriteHeader(code)
+	writeResponseError(w, msg)
 }
 
 func makeHandleFunc(c *Config) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
 		q := r.URL.Query()
 		username := q.Get("username")
 		password := q.Get("password")
 		if username == "" || password == "" {
-			http.Error(
-				w,
-				http.StatusText(http.StatusForbidden),
-				http.StatusForbidden,
-			)
+			code := http.StatusForbidden
+			httpError(w, http.StatusText(code), code)
 			return
 		}
-		balance, err := c.Func(r.Context(), username, password)
+		balance, err := c.GetBalance(r.Context(), username, password)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			httpError(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		w.Header().Set("Content-Type", "application/xml")
-		if err := xml.NewEncoder(w).Encode(
-			newXmlResponse(balance, c.Currency),
-		); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		writeResponseOK(w, balance, c.Currency)
 	}
 }
 
 func ListenAndServe(ctx context.Context, c Config) error {
 	http.HandleFunc(c.Path, makeHandleFunc(&c))
-	s := &http.Server{
+	srv := &http.Server{
 		Addr:           c.Addr,
 		ReadTimeout:    *c.ReadTimeout,
 		WriteTimeout:   *c.WriteTimeout,
@@ -169,9 +180,9 @@ func ListenAndServe(ctx context.Context, c Config) error {
 	errchan := make(chan error, 1)
 	go func() {
 		if c.CertFile != "" && c.KeyFile != "" {
-			errchan <- s.ListenAndServeTLS(c.CertFile, c.KeyFile)
+			errchan <- srv.ListenAndServeTLS(c.CertFile, c.KeyFile)
 		} else {
-			errchan <- s.ListenAndServe()
+			errchan <- srv.ListenAndServe()
 		}
 	}()
 	select {
@@ -181,7 +192,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 			*c.HandlerTimeout,
 		)
 		defer cancel()
-		return s.Shutdown(ctx)
+		return srv.Shutdown(ctx)
 	case err := <-errchan:
 		return err
 	}
