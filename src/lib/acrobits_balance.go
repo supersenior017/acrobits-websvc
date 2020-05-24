@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.1.0"
+	Version = "0.1.1"
 
 	envPrefix   = "ACROBITS_BALANCE_"
 	EnvPath     = envPrefix + "PATH"
@@ -101,11 +101,10 @@ func (c *Config) Set(s string) error {
 
 func (c *Config) SetDefaults() {
 	getenv := func(s, def string) string {
-		res := os.Getenv(s)
-		if res == "" {
-			return def
+		if res := os.Getenv(s); res != "" {
+			return res
 		}
-		return res
+		return def
 	}
 	if c.Path == "" {
 		c.Path = getenv(EnvPath, DefaultPath)
