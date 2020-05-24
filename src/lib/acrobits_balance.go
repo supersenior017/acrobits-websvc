@@ -3,7 +3,6 @@ package acrobitsbalance
 import (
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,7 +10,7 @@ import (
 )
 
 const (
-	Version = "0.1.1"
+	Version = "0.1.2"
 
 	envPrefix   = "ACROBITS_BALANCE_"
 	EnvPath     = envPrefix + "PATH"
@@ -29,10 +28,9 @@ const (
 )
 
 type responseOK struct {
-	XMLName       xml.Name `xml:"response"`
-	BalanceString string   `xml:"balanceString"`
-	Balance       float64  `xml:"balance"`
-	Currency      string   `xml:"currency"`
+	BalanceString string  `json:"balanceString"`
+	Balance       float64 `json:"balance"`
+	Currency      string  `json:"currency"`
 }
 
 func writeResponseOK(
@@ -40,23 +38,20 @@ func writeResponseOK(
 	balance float64,
 	currency string,
 ) error {
-	r := &responseOK{}
-	r.BalanceString = currency + " " +
-		strconv.FormatFloat(balance, 'G', -1, 64)
-	r.Balance = balance
-	r.Currency = currency
-	return xml.NewEncoder(w).Encode(r)
+	return json.NewEncoder(w).Encode(&responseOK{
+		Balance:  balance,
+		Currency: currency,
+		BalanceString: currency + " " +
+			strconv.FormatFloat(balance, 'G', -1, 64),
+	})
 }
 
 type responseError struct {
-	XMLName xml.Name `xml:"error"`
-	Message string   `xml:"message"`
+	Message string `json:"message"`
 }
 
 func writeResponseError(w http.ResponseWriter, msg string) error {
-	r := &responseError{}
-	r.Message = msg
-	return xml.NewEncoder(w).Encode(r)
+	return json.NewEncoder(w).Encode(&responseError{msg})
 }
 
 type GetBalance func(context.Context, string, string) (float64, error)
@@ -144,7 +139,7 @@ func httpError(w http.ResponseWriter, msg string, code int) {
 
 func makeHandleFunc(c *Config) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml")
+		w.Header().Set("Content-Type", "application/json")
 		q := r.URL.Query()
 		username := q.Get("username")
 		password := q.Get("password")
