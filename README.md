@@ -35,22 +35,22 @@ Usage of acrobits-balance:
 
 ## Example
 
-To test run:
+To run localhost:
 ```sh
 $ acrobits-balance
 ```
 
-To config run:
+To run with config:
 ```sh
 $ acrobits-balance -c /usr/local/etc/acrobits-balance.json
 ```
 
-To docker run:
+To run in docker:
 ```sh
 $ docker run -d -p 8080:8080 acrobits-balance
 ```
 
-To docker config run (in folder):
+To run in docker with config (docker-compose.yaml):
 ```sh
 $ docker-compose up -d
 ```
