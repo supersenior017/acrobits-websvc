@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/signal"
 
-	acrobitsbalance "./lib"
+	acrobitswebsvc "./lib"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 )
 
 type Opts struct {
-	config acrobitsbalance.Config
+	config acrobitswebsvc.Config
 }
 
 func parseArgs() *Opts {
@@ -32,20 +32,19 @@ func parseArgs() *Opts {
 		os.Exit(ExitSuccess)
 	}
 	if *isVersion {
-		fmt.Println(acrobitsbalance.Version)
+		fmt.Println(acrobitswebsvc.Version)
 		os.Exit(ExitSuccess)
 	}
 	if !opts.config.IsSet() {
 		opts.config.SetDefaults()
 	}
-	opts.config.GetBalance = getBalance
+	opts.config.Balance.Func = getBalance
 	return opts
 }
 
 func getBalance(
 	ctx context.Context,
-	username string,
-	password string,
+	params acrobitswebsvc.Params,
 ) (float64, error) {
 	return 0, fmt.Errorf("NotImplemented")
 }
@@ -62,7 +61,7 @@ func main() {
 		cancel()
 	}()
 	log.Println("Starting on:", opts.config.Addr)
-	if err := acrobitsbalance.ListenAndServe(
+	if err := acrobitswebsvc.ListenAndServe(
 		ctx,
 		opts.config,
 	); err != nil && err != http.ErrServerClosed {

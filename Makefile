@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 SYSCONFDIR ?= $(PREFIX)/etc
-NAME := acrobits-balance
+NAME := acrobits-websvc
 CONF_NAME := $(NAME).json
 TARGET_DIR := ./target
 TARGET := $(TARGET_DIR)/$(NAME)

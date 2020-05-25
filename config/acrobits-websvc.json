@@ -1,0 +1,10 @@
+{
+  "path": "/acrobits/",
+  "addr": ":8080",
+  "balance": {
+    "path": "balance",
+    "currency": "USD"
+  },
+  "cert_file": "",
+  "key_file": ""
+}

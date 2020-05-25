@@ -1,25 +1,22 @@
-package acrobitsbalance
+package acrobitswebsvc
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
 const (
-	Version = "0.1.2"
+	Version = "0.1.3"
 
-	envPrefix   = "ACROBITS_BALANCE_"
-	EnvPath     = envPrefix + "PATH"
-	EnvAddr     = envPrefix + "ADDR"
-	EnvCurrency = envPrefix + "CURRENCY"
+	envPrefix = "ACROBITS_WEBSVC_"
+	EnvPath   = envPrefix + "PATH"
+	EnvAddr   = envPrefix + "ADDR"
 
-	DefaultPath     = "/acrobits/balance"
-	DefaultAddr     = "127.0.0.1:8080"
-	DefaultCurrency = "USD"
+	DefaultPath = "/acrobits/"
+	DefaultAddr = "127.0.0.1:8080"
 
 	DefaultReadTimeout    = 5 * time.Second
 	DefaultWriteTimeout   = DefaultReadTimeout
@@ -27,23 +24,9 @@ const (
 	DefaultHandlerTimeout = DefaultIdleTimeout
 )
 
-type responseOK struct {
-	BalanceString string  `json:"balanceString"`
-	Balance       float64 `json:"balance"`
-	Currency      string  `json:"currency"`
-}
-
-func writeResponseOK(
-	w http.ResponseWriter,
-	balance float64,
-	currency string,
-) error {
-	return json.NewEncoder(w).Encode(&responseOK{
-		Balance:  balance,
-		Currency: currency,
-		BalanceString: currency + " " +
-			strconv.FormatFloat(balance, 'G', -1, 64),
-	})
+type Params struct {
+	username string
+	password string
 }
 
 type responseError struct {
@@ -54,19 +37,16 @@ func writeResponseError(w http.ResponseWriter, msg string) error {
 	return json.NewEncoder(w).Encode(&responseError{msg})
 }
 
-type GetBalance func(context.Context, string, string) (float64, error)
-
 type Config struct {
 	Path           string         `json:"path"`
 	Addr           string         `json:"addr"`
-	Currency       string         `json:"currency"`
+	Balance        Balance        `json:"balance"`
 	CertFile       string         `json:"cert_file"`
 	KeyFile        string         `json:"key_file"`
 	ReadTimeout    *time.Duration `json:"read_timeout"`
 	WriteTimeout   *time.Duration `json:"write_timeout"`
 	IdleTimeout    *time.Duration `json:"idle_timeout"`
 	HandlerTimeout *time.Duration `json:"handler_timeout"`
-	GetBalance     GetBalance     `json:"-"`
 	isSet          bool
 }
 
@@ -95,21 +75,13 @@ func (c *Config) Set(s string) error {
 }
 
 func (c *Config) SetDefaults() {
-	getenv := func(s, def string) string {
-		if res := os.Getenv(s); res != "" {
-			return res
-		}
-		return def
-	}
 	if c.Path == "" {
 		c.Path = getenv(EnvPath, DefaultPath)
 	}
 	if c.Addr == "" {
 		c.Addr = getenv(EnvAddr, DefaultAddr)
 	}
-	if c.Currency == "" {
-		c.Currency = getenv(EnvCurrency, DefaultCurrency)
-	}
+	c.Balance.SetDefaults()
 	if c.ReadTimeout == nil {
 		readTimeout := DefaultReadTimeout
 		c.ReadTimeout = &readTimeout
@@ -137,28 +109,12 @@ func httpError(w http.ResponseWriter, msg string, code int) {
 	writeResponseError(w, msg)
 }
 
-func makeHandleFunc(c *Config) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		q := r.URL.Query()
-		username := q.Get("username")
-		password := q.Get("password")
-		if username == "" || password == "" {
-			code := http.StatusForbidden
-			httpError(w, http.StatusText(code), code)
-			return
-		}
-		balance, err := c.GetBalance(r.Context(), username, password)
-		if err != nil {
-			httpError(w, err.Error(), http.StatusServiceUnavailable)
-			return
-		}
-		writeResponseOK(w, balance, c.Currency)
-	}
-}
-
 func ListenAndServe(ctx context.Context, c Config) error {
-	http.HandleFunc(c.Path, makeHandleFunc(&c))
+	http.HandleFunc(
+		urljoin(c.Path, c.Balance.Path),
+		makeBalanceHandleFunc(&c.Balance),
+	)
+	// TODO timeout message
 	srv := &http.Server{
 		Addr:           c.Addr,
 		ReadTimeout:    *c.ReadTimeout,
@@ -166,7 +122,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		IdleTimeout:    *c.IdleTimeout,
 		MaxHeaderBytes: 1 << 12,
 		Handler: http.TimeoutHandler(
-			http.DefaultServeMux,
+			&jsonHandler{http.DefaultServeMux},
 			*c.HandlerTimeout,
 			"",
 		),
