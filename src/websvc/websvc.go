@@ -1,4 +1,4 @@
-package acrobitswebsvc
+package websvc
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	Version = "0.1.3"
+	Version = "0.1.4"
 
 	envPrefix = "ACROBITS_WEBSVC_"
 	EnvPath   = envPrefix + "PATH"
@@ -24,9 +24,9 @@ const (
 	DefaultHandlerTimeout = DefaultIdleTimeout
 )
 
-type Params struct {
-	username string
-	password string
+type Account struct {
+	Username string
+	Password string
 }
 
 type responseError struct {
@@ -37,10 +37,14 @@ func writeResponseError(w http.ResponseWriter, msg string) error {
 	return json.NewEncoder(w).Encode(&responseError{msg})
 }
 
+func setConstDurationRef(t **time.Duration, c time.Duration) {
+	*t = &c
+}
+
 type Config struct {
 	Path           string         `json:"path"`
 	Addr           string         `json:"addr"`
-	Balance        Balance        `json:"balance"`
+	Balance        BalanceConfig  `json:"balance"`
 	CertFile       string         `json:"cert_file"`
 	KeyFile        string         `json:"key_file"`
 	ReadTimeout    *time.Duration `json:"read_timeout"`
@@ -83,20 +87,16 @@ func (c *Config) SetDefaults() {
 	}
 	c.Balance.SetDefaults()
 	if c.ReadTimeout == nil {
-		readTimeout := DefaultReadTimeout
-		c.ReadTimeout = &readTimeout
+		setConstDurationRef(&c.ReadTimeout, DefaultReadTimeout)
 	}
 	if c.WriteTimeout == nil {
-		writeTimeout := DefaultWriteTimeout
-		c.WriteTimeout = &writeTimeout
+		setConstDurationRef(&c.WriteTimeout, DefaultWriteTimeout)
 	}
 	if c.IdleTimeout == nil {
-		idleTimeout := DefaultIdleTimeout
-		c.IdleTimeout = &idleTimeout
+		setConstDurationRef(&c.IdleTimeout, DefaultIdleTimeout)
 	}
 	if c.HandlerTimeout == nil {
-		handlerTimeout := DefaultHandlerTimeout
-		c.HandlerTimeout = &handlerTimeout
+		setConstDurationRef(&c.HandlerTimeout, DefaultHandlerTimeout)
 	}
 }
 
@@ -114,18 +114,18 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		urljoin(c.Path, c.Balance.Path),
 		makeBalanceHandleFunc(&c.Balance),
 	)
-	// TODO timeout message
+	timeoutMsg, _ := json.Marshal(&responseError{"timeout"})
 	srv := &http.Server{
 		Addr:           c.Addr,
 		ReadTimeout:    *c.ReadTimeout,
 		WriteTimeout:   *c.WriteTimeout,
 		IdleTimeout:    *c.IdleTimeout,
 		MaxHeaderBytes: 1 << 12,
-		Handler: http.TimeoutHandler(
-			&jsonHandler{http.DefaultServeMux},
+		Handler: &jsonHandler{http.TimeoutHandler(
+			http.DefaultServeMux,
 			*c.HandlerTimeout,
-			"",
-		),
+			string(timeoutMsg),
+		)},
 	}
 	errchan := make(chan error, 1)
 	go func() {

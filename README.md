@@ -3,13 +3,13 @@
 [Acrobits Web Services](https://doc.acrobits.net/api/client/index.html). 
 You must overwrite functions in `main.go` file.
 
-[*balance checker*](https://doc.acrobits.net/api/client/balance_checker.html)
+[balance checker](https://doc.acrobits.net/api/client/balance_checker.html)
 ```go
 func getBalance(
 	ctx context.Context,
-	params acrobitswebsvc.Params,
-) (float64, error) {
-	return 0, fmt.Errorf("NotImplemented")
+	account websvc.Account,
+) (websvc.Balance, error) {
+	return websvc.Balance{}, fmt.Errorf("NotImplemented")
 }
 ```  
 

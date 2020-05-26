@@ -1,4 +1,4 @@
-package acrobitswebsvc
+package websvc
 
 import (
 	"net/http"
