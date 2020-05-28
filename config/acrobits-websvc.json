@@ -3,8 +3,19 @@
   "addr": ":8080",
   "balance": {
     "path": "balance",
-    "currency": "USD"
+    "currency": "USD",
+    "enabled": true
+  },
+  "rate": {
+    "path": "rate",
+    "currency": "¢",
+    "specification": "min.",
+    "enabled": true
   },
   "cert_file": "",
-  "key_file": ""
+  "key_file": "",
+  "read_timeout": "8s",
+  "write_timeout": "8s",
+  "idle_timeout": "32s",
+  "handler_timeout": "32s"
 }

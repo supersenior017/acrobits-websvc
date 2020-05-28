@@ -13,6 +13,16 @@ func getBalance(
 }
 ```  
 
+[rate checker](https://doc.acrobits.net/api/client/rate_checker.html)
+```go
+func getRate(
+	ctx context.Context,
+	rate websvc.RateParams,
+) (websvc.Rate, error) {
+	return websvc.Rate{}, fmt.Errorf("NotImplemented")
+}
+```
+
 ## Installation
 ```sh
 $ make
@@ -49,7 +59,7 @@ To run in docker:
 $ docker run -d -p 8080:8080 acrobits-websvc
 ```
 
-To run in docker with config (docker-compose.yaml):
+To run in docker with config and env file (docker-compose.yaml):
 ```sh
 $ docker-compose up -d
 ```

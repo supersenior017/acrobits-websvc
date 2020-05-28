@@ -3,24 +3,33 @@ package websvc
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
 const (
-	Version = "0.1.4"
+	Version = "0.1.5"
 
-	envPrefix = "ACROBITS_WEBSVC_"
-	EnvPath   = envPrefix + "PATH"
-	EnvAddr   = envPrefix + "ADDR"
+	envPrefix   = "ACROBITS_WEBSVC_"
+	EnvPath     = envPrefix + "PATH"
+	EnvAddr     = envPrefix + "ADDR"
+	EnvCertFile = envPrefix + "CERT_FILE"
+	EnvKeyFile  = envPrefix + "KEY_FILE"
+
+	EnvReadTimeout    = envPrefix + "READ_TIMEOUT"
+	EnvWriteTimeout   = envPrefix + "WRITE_TIMEOUT"
+	EnvIdleTimeout    = envPrefix + "IDLE_TIMEOUT"
+	EnvHandlerTimeout = envPrefix + "HANDLER_TIMEOUT"
 
 	DefaultPath = "/acrobits/"
 	DefaultAddr = "127.0.0.1:8080"
 
-	DefaultReadTimeout    = 5 * time.Second
+	DefaultReadTimeout    = 1 << 3 * time.Second
 	DefaultWriteTimeout   = DefaultReadTimeout
-	DefaultIdleTimeout    = 30 * time.Second
+	DefaultIdleTimeout    = 1 << 5 * time.Second
 	DefaultHandlerTimeout = DefaultIdleTimeout
 )
 
@@ -37,20 +46,83 @@ func writeResponseError(w http.ResponseWriter, msg string) error {
 	return json.NewEncoder(w).Encode(&responseError{msg})
 }
 
-func setConstDurationRef(t **time.Duration, c time.Duration) {
-	*t = &c
+type Duration time.Duration
+
+func (d *Duration) Set(s string) error {
+	v, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*d = Duration(v)
+	return nil
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	return d.Set(s)
+}
+
+func (d Duration) Unwrap() time.Duration {
+	return time.Duration(d)
+}
+
+func setConfigEnabled(dest **bool, envKey string) {
+	if val := os.Getenv(envKey); val != "" {
+		b, err := strconv.ParseBool(val)
+		if err == nil {
+			*dest = &b
+			return
+		}
+		log.Println(err)
+	}
+	if *dest == nil {
+		b := true
+		*dest = &b
+	}
+}
+
+func setConfigTimeout(
+	dest **Duration,
+	envKey string,
+	defaultValue time.Duration,
+) {
+	if val := os.Getenv(envKey); val != "" {
+		var d Duration
+		err := d.Set(val)
+		if err == nil {
+			*dest = &d
+			return
+		}
+		log.Println(err)
+	}
+	if *dest == nil {
+		d := Duration(defaultValue)
+		*dest = &d
+	}
+}
+
+func setConfigString(dest *string, envKey, defaultValue string) {
+	if val := os.Getenv(envKey); val != "" {
+		*dest = val
+	} else if *dest == "" {
+		*dest = defaultValue
+	}
 }
 
 type Config struct {
-	Path           string         `json:"path"`
-	Addr           string         `json:"addr"`
-	Balance        BalanceConfig  `json:"balance"`
-	CertFile       string         `json:"cert_file"`
-	KeyFile        string         `json:"key_file"`
-	ReadTimeout    *time.Duration `json:"read_timeout"`
-	WriteTimeout   *time.Duration `json:"write_timeout"`
-	IdleTimeout    *time.Duration `json:"idle_timeout"`
-	HandlerTimeout *time.Duration `json:"handler_timeout"`
+	Path           string        `json:"path"`
+	Addr           string        `json:"addr"`
+	Balance        BalanceConfig `json:"balance"`
+	Rate           RateConfig    `json:"rate"`
+	CertFile       string        `json:"cert_file"`
+	KeyFile        string        `json:"key_file"`
+	ReadTimeout    *Duration     `json:"read_timeout"`
+	WriteTimeout   *Duration     `json:"write_timeout"`
+	IdleTimeout    *Duration     `json:"idle_timeout"`
+	HandlerTimeout *Duration     `json:"handler_timeout"`
 	isSet          bool
 }
 
@@ -74,30 +146,29 @@ func (c *Config) Set(s string) error {
 		return err
 	}
 	c.SetDefaults()
-	c.isSet = true
 	return nil
 }
 
 func (c *Config) SetDefaults() {
-	if c.Path == "" {
-		c.Path = getenv(EnvPath, DefaultPath)
-	}
-	if c.Addr == "" {
-		c.Addr = getenv(EnvAddr, DefaultAddr)
-	}
+	setConfigString(&c.Path, EnvPath, DefaultPath)
+	setConfigString(&c.Addr, EnvAddr, DefaultAddr)
 	c.Balance.SetDefaults()
-	if c.ReadTimeout == nil {
-		setConstDurationRef(&c.ReadTimeout, DefaultReadTimeout)
+	c.Rate.SetDefaults()
+	if c.CertFile == "" {
+		c.CertFile = os.Getenv(EnvCertFile)
 	}
-	if c.WriteTimeout == nil {
-		setConstDurationRef(&c.WriteTimeout, DefaultWriteTimeout)
+	if c.KeyFile == "" {
+		c.KeyFile = os.Getenv(EnvKeyFile)
 	}
-	if c.IdleTimeout == nil {
-		setConstDurationRef(&c.IdleTimeout, DefaultIdleTimeout)
-	}
-	if c.HandlerTimeout == nil {
-		setConstDurationRef(&c.HandlerTimeout, DefaultHandlerTimeout)
-	}
+	setConfigTimeout(&c.ReadTimeout, EnvReadTimeout, DefaultReadTimeout)
+	setConfigTimeout(&c.WriteTimeout, EnvWriteTimeout, DefaultWriteTimeout)
+	setConfigTimeout(&c.IdleTimeout, EnvIdleTimeout, DefaultIdleTimeout)
+	setConfigTimeout(
+		&c.HandlerTimeout,
+		EnvHandlerTimeout,
+		DefaultHandlerTimeout,
+	)
+	c.isSet = true
 }
 
 func (c *Config) IsSet() bool {
@@ -109,21 +180,37 @@ func httpError(w http.ResponseWriter, msg string, code int) {
 	writeResponseError(w, msg)
 }
 
+func addHandlers(c *Config) {
+	if *c.Balance.Enabled {
+		http.HandleFunc(
+			urljoin(c.Path, c.Balance.Path),
+			makeBalanceHandleFunc(&c.Balance),
+		)
+	}
+	if *c.Rate.Enabled {
+		http.HandleFunc(
+			urljoin(c.Path, c.Rate.Path),
+			makeRateHandleFunc(&c.Rate),
+		)
+	}
+}
+
 func ListenAndServe(ctx context.Context, c Config) error {
-	http.HandleFunc(
-		urljoin(c.Path, c.Balance.Path),
-		makeBalanceHandleFunc(&c.Balance),
-	)
+	if !c.IsSet() {
+		c.SetDefaults()
+	}
+	addHandlers(&c)
 	timeoutMsg, _ := json.Marshal(&responseError{"timeout"})
+	handlerTimeout := c.HandlerTimeout.Unwrap()
 	srv := &http.Server{
 		Addr:           c.Addr,
-		ReadTimeout:    *c.ReadTimeout,
-		WriteTimeout:   *c.WriteTimeout,
-		IdleTimeout:    *c.IdleTimeout,
+		ReadTimeout:    c.ReadTimeout.Unwrap(),
+		WriteTimeout:   c.WriteTimeout.Unwrap(),
+		IdleTimeout:    c.IdleTimeout.Unwrap(),
 		MaxHeaderBytes: 1 << 12,
 		Handler: &jsonHandler{http.TimeoutHandler(
 			http.DefaultServeMux,
-			*c.HandlerTimeout,
+			handlerTimeout,
 			string(timeoutMsg),
 		)},
 	}
@@ -139,7 +226,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(
 			context.Background(),
-			*c.HandlerTimeout,
+			handlerTimeout,
 		)
 		defer cancel()
 		return srv.Shutdown(ctx)

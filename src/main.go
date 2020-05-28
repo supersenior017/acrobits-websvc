@@ -39,6 +39,7 @@ func parseArgs() *Opts {
 		opts.config.SetDefaults()
 	}
 	opts.config.Balance.Func = getBalance
+	opts.config.Rate.Func = getRate
 	return opts
 }
 
@@ -47,6 +48,13 @@ func getBalance(
 	account websvc.Account,
 ) (websvc.Balance, error) {
 	return websvc.Balance{}, fmt.Errorf("NotImplemented")
+}
+
+func getRate(
+	ctx context.Context,
+	rate websvc.RateParams,
+) (websvc.Rate, error) {
+	return websvc.Rate{}, fmt.Errorf("NotImplemented")
 }
 
 func main() {
@@ -60,7 +68,7 @@ func main() {
 		<-sigint
 		cancel()
 	}()
-	log.Println("Starting on:", opts.config.Addr)
+	log.Printf("Starting on: `%s`\n", opts.config.Addr)
 	if err := websvc.ListenAndServe(
 		ctx,
 		opts.config,

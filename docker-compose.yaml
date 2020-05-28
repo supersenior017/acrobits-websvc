@@ -9,3 +9,5 @@ services:
       - 8080:8080
     volumes:
       - ./config/:/config/:ro
+    env_file:
+      - ./acrobits-websvc.env

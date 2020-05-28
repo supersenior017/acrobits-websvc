@@ -3,15 +3,8 @@ package websvc
 import (
 	"net/http"
 	"net/url"
-	"os"
+	"strconv"
 )
-
-func getenv(s, def string) string {
-	if v := os.Getenv(s); v != "" {
-		return v
-	}
-	return def
-}
 
 func urljoin(base, ref string) string {
 	baseURL, err := url.Parse(base)
@@ -32,4 +25,8 @@ type jsonHandler struct {
 func (h *jsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	h.handler.ServeHTTP(w, r)
+}
+
+func ftoa(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
