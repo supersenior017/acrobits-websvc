@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/signal"
 
-	"./websvc"
+	"bitbucket.org/x31a/acrobits-websvc/src/websvc"
 )
 
 const (
@@ -68,7 +68,7 @@ func main() {
 		<-sigint
 		cancel()
 	}()
-	log.Printf("Starting on: `%s`\n", opts.config.Addr)
+	log.Printf("Starting on: %q\n", opts.config.Addr)
 	if err := websvc.ListenAndServe(
 		ctx,
 		opts.config,
