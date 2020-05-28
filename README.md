@@ -59,7 +59,7 @@ To run in docker:
 $ docker run -d -p 8080:8080 acrobits-websvc
 ```
 
-To run in docker with config and env file (docker-compose.yaml):
+To run in docker with config and env files (docker-compose.yaml):
 ```sh
 $ docker-compose up -d
 ```
