@@ -90,7 +90,7 @@ func (c *RateConfig) SetDefaults() {
 	setConfigEnabled(&c.Enabled, EnvRateEnabled)
 }
 
-func makeRateHandleFunc(c *RateConfig) func(
+func makeRateHandleFunc(c RateConfig) func(
 	http.ResponseWriter,
 	*http.Request,
 ) {
@@ -114,7 +114,7 @@ func makeRateHandleFunc(c *RateConfig) func(
 			httpError(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		rate.SetDefaults(c)
+		rate.SetDefaults(&c)
 		writeRateResponse(w, rate)
 	}
 }

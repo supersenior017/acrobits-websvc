@@ -56,7 +56,7 @@ func (c *BalanceConfig) SetDefaults() {
 	setConfigEnabled(&c.Enabled, EnvBalanceEnabled)
 }
 
-func makeBalanceHandleFunc(c *BalanceConfig) func(
+func makeBalanceHandleFunc(c BalanceConfig) func(
 	http.ResponseWriter,
 	*http.Request,
 ) {
@@ -76,7 +76,7 @@ func makeBalanceHandleFunc(c *BalanceConfig) func(
 			httpError(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		balance.SetDefaults(c)
+		balance.SetDefaults(&c)
 		writeBalanceResponse(w, balance)
 	}
 }

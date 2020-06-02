@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.1.6"
+	Version = "0.1.7"
 
 	envPrefix   = "ACROBITS_WEBSVC_"
 	EnvPath     = envPrefix + "PATH"
@@ -184,13 +184,13 @@ func addHandlers(c *Config) {
 	if *c.Balance.Enabled {
 		http.HandleFunc(
 			urljoin(c.Path, c.Balance.Path),
-			makeBalanceHandleFunc(&c.Balance),
+			makeBalanceHandleFunc(c.Balance),
 		)
 	}
 	if *c.Rate.Enabled {
 		http.HandleFunc(
 			urljoin(c.Path, c.Rate.Path),
-			makeRateHandleFunc(&c.Rate),
+			makeRateHandleFunc(c.Rate),
 		)
 	}
 }
