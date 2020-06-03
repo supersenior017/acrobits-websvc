@@ -1,8 +1,10 @@
 FROM golang
 
-WORKDIR /build
-COPY ./src/ .
-RUN CGO_ENABLED=0 go build -o ./main
+WORKDIR /build/
+COPY ./src/ ./src/
+COPY ./go.mod ./go.sum ./
+RUN go mod download
+RUN CGO_ENABLED=0 go build -o ./main ./src/
 
 FROM scratch
 
