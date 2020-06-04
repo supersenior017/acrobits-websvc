@@ -1,3 +1,5 @@
+.PHONY: docker
+
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 SYSCONFDIR ?= $(PREFIX)/etc
@@ -22,3 +24,6 @@ uninstall:
 
 clean:
 	rm -rf $(TARGET_DIR)/
+
+docker:
+	docker build -t $(NAME) -f ./docker/Dockerfile "."
