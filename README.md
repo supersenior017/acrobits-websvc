@@ -30,7 +30,7 @@ $ make install
 ```
 or
 ```sh
-$ docker build -t acrobits-websvc -f ./docker/Dockerfile "."
+$ make docker
 ```
 
 ## Usage
@@ -56,7 +56,7 @@ $ acrobits-websvc -c /usr/local/etc/acrobits-websvc.json
 
 To run in docker:
 ```sh
-$ docker run -d -p 8080:8080 acrobits-websvc
+$ docker run --rm -d -p 8080:8080 acrobits-websvc
 ```
 
 To run in docker with config and env files:
