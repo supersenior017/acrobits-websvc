@@ -6,16 +6,24 @@ import (
 	"strconv"
 )
 
-func urljoin(base, ref string) string {
+func urljoin(base, ref string) (string, error) {
 	baseURL, err := url.Parse(base)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	refURL, err := url.Parse(ref)
 	if err != nil {
+		return "", err
+	}
+	return baseURL.ResolveReference(refURL).String(), nil
+}
+
+func urlMustJoin(base, ref string) string {
+	res, err := urljoin(base, ref)
+	if err != nil {
 		panic(err)
 	}
-	return baseURL.ResolveReference(refURL).String()
+	return res
 }
 
 type jsonHandler struct {
