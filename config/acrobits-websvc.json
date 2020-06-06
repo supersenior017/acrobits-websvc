@@ -14,8 +14,8 @@
   },
   "cert_file": "",
   "key_file": "",
-  "read_timeout": "8s",
-  "write_timeout": "8s",
+  "read_timeout": "4s",
+  "write_timeout": "4s",
   "idle_timeout": "32s",
   "handler_timeout": "32s"
 }

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.1.8"
+	Version = "0.1.9"
 
 	envPrefix   = "ACROBITS_WEBSVC_"
 	EnvPath     = envPrefix + "PATH"
@@ -27,7 +27,7 @@ const (
 	DefaultPath = "/acrobits/"
 	DefaultAddr = "127.0.0.1:8080"
 
-	DefaultReadTimeout    = 1 << 3 * time.Second
+	DefaultReadTimeout    = 1 << 2 * time.Second
 	DefaultWriteTimeout   = DefaultReadTimeout
 	DefaultIdleTimeout    = 1 << 5 * time.Second
 	DefaultHandlerTimeout = DefaultIdleTimeout
@@ -180,15 +180,15 @@ func httpError(w http.ResponseWriter, msg string, code int) {
 	writeResponseError(w, msg)
 }
 
-func addHandlers(c *Config) {
+func addHandlers(m *http.ServeMux, c *Config) {
 	if *c.Balance.Enabled {
-		http.HandleFunc(
+		m.HandleFunc(
 			urlMustJoin(c.Path, c.Balance.Path),
 			makeBalanceHandleFunc(c.Balance),
 		)
 	}
 	if *c.Rate.Enabled {
-		http.HandleFunc(
+		m.HandleFunc(
 			urlMustJoin(c.Path, c.Rate.Path),
 			makeRateHandleFunc(c.Rate),
 		)
@@ -199,7 +199,8 @@ func ListenAndServe(ctx context.Context, c Config) error {
 	if !c.IsSet() {
 		c.SetDefaults()
 	}
-	addHandlers(&c)
+	mux := http.NewServeMux()
+	addHandlers(mux, &c)
 	timeoutMsg, _ := json.Marshal(&responseError{"timeout"})
 	handlerTimeout := c.HandlerTimeout.Unwrap()
 	srv := &http.Server{
@@ -209,7 +210,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		IdleTimeout:    c.IdleTimeout.Unwrap(),
 		MaxHeaderBytes: 1 << 12,
 		Handler: &jsonHandler{http.TimeoutHandler(
-			http.DefaultServeMux,
+			mux,
 			handlerTimeout,
 			string(timeoutMsg),
 		)},
