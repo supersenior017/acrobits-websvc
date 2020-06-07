@@ -11,5 +11,6 @@ services:
       - 8080:8080
     volumes:
       - ../config/:/config/:ro
+      - ../certs/:/certs/:ro
     env_file:
       - ./env/acrobits-websvc.env
