@@ -26,11 +26,14 @@ func urlMustJoin(base, ref string) string {
 	return res
 }
 
-type jsonHandler struct {
+type jsonResponseHandler struct {
 	handler http.Handler
 }
 
-func (h *jsonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *jsonResponseHandler) ServeHTTP(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	w.Header().Set("Content-Type", "application/json")
 	h.handler.ServeHTTP(w, r)
 }

@@ -3,7 +3,7 @@ package websvc
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.1.9"
+	Version = "0.1.10"
 
 	envPrefix   = "ACROBITS_WEBSVC_"
 	EnvPath     = envPrefix + "PATH"
@@ -69,39 +69,33 @@ func (d Duration) Unwrap() time.Duration {
 	return time.Duration(d)
 }
 
-func setConfigEnabled(dest **bool, envKey string) {
+func setConfigEnabled(dest *bool, envKey string) error {
 	if val := os.Getenv(envKey); val != "" {
 		b, err := strconv.ParseBool(val)
-		if err == nil {
-			*dest = &b
-			return
+		if err != nil {
+			return err
 		}
-		log.Println(err)
+		*dest = b
 	}
-	if *dest == nil {
-		b := true
-		*dest = &b
-	}
+	return nil
 }
 
 func setConfigTimeout(
 	dest **Duration,
 	envKey string,
 	defaultValue time.Duration,
-) {
+) error {
 	if val := os.Getenv(envKey); val != "" {
 		var d Duration
-		err := d.Set(val)
-		if err == nil {
-			*dest = &d
-			return
+		if err := d.Set(val); err != nil {
+			return err
 		}
-		log.Println(err)
-	}
-	if *dest == nil {
+		*dest = &d
+	} else if *dest == nil {
 		d := Duration(defaultValue)
 		*dest = &d
 	}
+	return nil
 }
 
 func setConfigString(dest *string, envKey, defaultValue string) {
@@ -145,30 +139,54 @@ func (c *Config) Set(s string) error {
 	if err = json.NewDecoder(file).Decode(c); err != nil {
 		return err
 	}
-	c.SetDefaults()
-	return nil
+	return c.SetDefaults()
 }
 
-func (c *Config) SetDefaults() {
+func (c *Config) SetDefaults() error {
 	setConfigString(&c.Path, EnvPath, DefaultPath)
 	setConfigString(&c.Addr, EnvAddr, DefaultAddr)
-	c.Balance.SetDefaults()
-	c.Rate.SetDefaults()
+	if err := c.Balance.SetDefaults(); err != nil {
+		return err
+	}
+	if err := c.Rate.SetDefaults(); err != nil {
+		return err
+	}
 	if c.CertFile == "" {
 		c.CertFile = os.Getenv(EnvCertFile)
 	}
 	if c.KeyFile == "" {
 		c.KeyFile = os.Getenv(EnvKeyFile)
 	}
-	setConfigTimeout(&c.ReadTimeout, EnvReadTimeout, DefaultReadTimeout)
-	setConfigTimeout(&c.WriteTimeout, EnvWriteTimeout, DefaultWriteTimeout)
-	setConfigTimeout(&c.IdleTimeout, EnvIdleTimeout, DefaultIdleTimeout)
-	setConfigTimeout(
+	if err := setConfigTimeout(
+		&c.ReadTimeout,
+		EnvReadTimeout,
+		DefaultReadTimeout,
+	); err != nil {
+		return err
+	}
+	if err := setConfigTimeout(
+		&c.WriteTimeout,
+		EnvWriteTimeout,
+		DefaultWriteTimeout,
+	); err != nil {
+		return err
+	}
+	if err := setConfigTimeout(
+		&c.IdleTimeout,
+		EnvIdleTimeout,
+		DefaultIdleTimeout,
+	); err != nil {
+		return err
+	}
+	if err := setConfigTimeout(
 		&c.HandlerTimeout,
 		EnvHandlerTimeout,
 		DefaultHandlerTimeout,
-	)
+	); err != nil {
+		return err
+	}
 	c.isSet = true
+	return nil
 }
 
 func (c *Config) IsSet() bool {
@@ -180,27 +198,44 @@ func httpError(w http.ResponseWriter, msg string, code int) {
 	writeResponseError(w, msg)
 }
 
-func addHandlers(m *http.ServeMux, c *Config) {
-	if *c.Balance.Enabled {
+func addHandlers(m *http.ServeMux, c *Config) error {
+	hasEnabled := false
+	if c.Balance.Enabled {
+		if c.Balance.Func == nil {
+			return errors.New("balance func is nil")
+		}
 		m.HandleFunc(
 			urlMustJoin(c.Path, c.Balance.Path),
 			makeBalanceHandleFunc(c.Balance),
 		)
+		hasEnabled = true
 	}
-	if *c.Rate.Enabled {
+	if c.Rate.Enabled {
+		if c.Rate.Func == nil {
+			return errors.New("rate func is nil")
+		}
 		m.HandleFunc(
 			urlMustJoin(c.Path, c.Rate.Path),
 			makeRateHandleFunc(c.Rate),
 		)
+		hasEnabled = true
 	}
+	if !hasEnabled {
+		return errors.New("no enabled modules")
+	}
+	return nil
 }
 
 func ListenAndServe(ctx context.Context, c Config) error {
-	if !c.IsSet() {
-		c.SetDefaults()
+	if !c.isSet {
+		if err := c.SetDefaults(); err != nil {
+			return err
+		}
 	}
 	mux := http.NewServeMux()
-	addHandlers(mux, &c)
+	if err := addHandlers(mux, &c); err != nil {
+		return err
+	}
 	timeoutMsg, _ := json.Marshal(&responseError{"timeout"})
 	handlerTimeout := c.HandlerTimeout.Unwrap()
 	srv := &http.Server{
@@ -209,7 +244,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		WriteTimeout:   c.WriteTimeout.Unwrap(),
 		IdleTimeout:    c.IdleTimeout.Unwrap(),
 		MaxHeaderBytes: 1 << 12,
-		Handler: &jsonHandler{http.TimeoutHandler(
+		Handler: &jsonResponseHandler{http.TimeoutHandler(
 			mux,
 			handlerTimeout,
 			string(timeoutMsg),

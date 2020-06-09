@@ -75,11 +75,11 @@ type RateConfig struct {
 	Path          string   `json:"path"`
 	Currency      string   `json:"currency"`
 	Specification string   `json:"specification"`
-	Enabled       *bool    `json:"enabled"`
+	Enabled       bool     `json:"enabled"`
 	Func          RateFunc `json:"-"`
 }
 
-func (c *RateConfig) SetDefaults() {
+func (c *RateConfig) SetDefaults() error {
 	setConfigString(&c.Path, EnvRatePath, DefaultRatePath)
 	setConfigString(&c.Currency, EnvRateCurrency, DefaultRateCurrency)
 	setConfigString(
@@ -87,7 +87,7 @@ func (c *RateConfig) SetDefaults() {
 		EnvRateSpecification,
 		DefaultRateSpecification,
 	)
-	setConfigEnabled(&c.Enabled, EnvRateEnabled)
+	return setConfigEnabled(&c.Enabled, EnvRateEnabled)
 }
 
 func makeRateHandleFunc(c RateConfig) func(

@@ -46,14 +46,14 @@ type BalanceFunc func(context.Context, Account) (Balance, error)
 type BalanceConfig struct {
 	Path     string      `json:"path"`
 	Currency string      `json:"currency"`
-	Enabled  *bool       `json:"enabled"`
+	Enabled  bool        `json:"enabled"`
 	Func     BalanceFunc `json:"-"`
 }
 
-func (c *BalanceConfig) SetDefaults() {
+func (c *BalanceConfig) SetDefaults() error {
 	setConfigString(&c.Path, EnvBalancePath, DefaultBalancePath)
 	setConfigString(&c.Currency, EnvBalanceCurrency, DefaultBalanceCurrency)
-	setConfigEnabled(&c.Enabled, EnvBalanceEnabled)
+	return setConfigEnabled(&c.Enabled, EnvBalanceEnabled)
 }
 
 func makeBalanceHandleFunc(c BalanceConfig) func(

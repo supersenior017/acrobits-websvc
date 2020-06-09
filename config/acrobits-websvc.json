@@ -4,13 +4,13 @@
   "balance": {
     "path": "balance",
     "currency": "USD",
-    "enabled": true
+    "enabled": false
   },
   "rate": {
     "path": "rate",
     "currency": "¢",
     "specification": "min.",
-    "enabled": true
+    "enabled": false
   },
   "cert_file": "",
   "key_file": "",
