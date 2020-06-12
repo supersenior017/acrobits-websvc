@@ -38,12 +38,12 @@ func parseArgs() *Opts {
 		os.Exit(ExitSuccess)
 	}
 	if !opts.config.IsSet() {
+		opts.config.Balance.Enabled = true
+		opts.config.Rate.Enabled = true
 		if err := opts.config.SetDefaults(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(ExitUsage)
 		}
-		opts.config.Balance.Enabled = true
-		opts.config.Rate.Enabled = true
 	}
 	opts.config.Balance.Func = getBalance
 	opts.config.Rate.Func = getRate
