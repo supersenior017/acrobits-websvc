@@ -1,29 +1,37 @@
 .PHONY: docker
 
-PREFIX ?= /usr/local
-BINDIR ?= $(PREFIX)/bin
-SYSCONFDIR ?= $(PREFIX)/etc
-NAME := acrobits-websvc
-CONF_NAME := $(NAME).json
-TARGET_DIR := ./target
-TARGET := $(TARGET_DIR)/$(NAME)
+NAME           := acrobits-websvc
+
+prefix         ?= /usr/local
+exec_prefix    ?= $(prefix)
+bindir         ?= $(exec_prefix)/bin
+sysconfdir     ?= $(prefix)/etc
+srcdir         ?= ./src
+
+confname       := acrobits-websvc.json
+targetdir      := ./target
+target         := $(targetdir)/$(NAME)
+bindestdir     := $(DESTDIR)$(bindir)
+sysconfdestdir := $(DESTDIR)$(sysconfdir)
 
 all: build
 
 build:
-	go build -o $(TARGET) ./src/
+	go build -o $(target) $(srcdir)/
 
-install:
-	install -d $(BINDIR)/ $(SYSCONFDIR)/
-	install $(TARGET) $(BINDIR)/
-	install -b -m 0644 ./config/$(CONF_NAME) $(SYSCONFDIR)/
+installdirs:
+	install -d $(bindestdir)/ $(sysconfdestdir)/
+
+install: installdirs
+	install $(target) $(bindestdir)/
+	install -b -m 0644 ./config/$(confname) $(sysconfdestdir)/
 
 uninstall:
-	rm -f $(BINDIR)/$(NAME)
-	rm -f $(SYSCONFDIR)/$(CONF_NAME)
+	rm -f $(bindestdir)/$(NAME)
+	rm -f $(sysconfdestdir)/$(confname)
 
 clean:
-	rm -rf $(TARGET_DIR)/
+	rm -rf $(targetdir)/
 
 docker:
 	docker build -t $(NAME) -f ./docker/Dockerfile "."
