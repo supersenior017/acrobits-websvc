@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version = "0.1.11"
+	Version = "0.2.0"
 
 	envPrefix   = "ACROBITS_WEBSVC_"
 	EnvPath     = envPrefix + "PATH"
@@ -202,7 +202,7 @@ func addHandlers(m *http.ServeMux, c *Config) error {
 	hasEnabled := false
 	if c.Balance.Enabled {
 		if c.Balance.Func == nil {
-			return errors.New("balance func is nil")
+			return errors.New("Balance.Func is nil")
 		}
 		m.HandleFunc(
 			urlMustJoin(c.Path, c.Balance.Path),
@@ -212,7 +212,7 @@ func addHandlers(m *http.ServeMux, c *Config) error {
 	}
 	if c.Rate.Enabled {
 		if c.Rate.Func == nil {
-			return errors.New("rate func is nil")
+			return errors.New("Rate.Func is nil")
 		}
 		m.HandleFunc(
 			urlMustJoin(c.Path, c.Rate.Path),
@@ -221,7 +221,7 @@ func addHandlers(m *http.ServeMux, c *Config) error {
 		hasEnabled = true
 	}
 	if !hasEnabled {
-		return errors.New("no enabled modules")
+		return errors.New("No enabled modules")
 	}
 	return nil
 }
@@ -236,7 +236,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 	if err := addHandlers(mux, &c); err != nil {
 		return err
 	}
-	timeoutMsg, _ := json.Marshal(&responseError{"timeout"})
+	timeoutMsg, _ := json.Marshal(&responseError{"Timeout"})
 	handlerTimeout := c.HandlerTimeout.Unwrap()
 	srv := &http.Server{
 		Addr:           c.Addr,
@@ -250,12 +250,12 @@ func ListenAndServe(ctx context.Context, c Config) error {
 			string(timeoutMsg),
 		)},
 	}
-	errchan := make(chan error, 1)
+	errChan := make(chan error, 1)
 	go func() {
 		if c.CertFile != "" && c.KeyFile != "" {
-			errchan <- srv.ListenAndServeTLS(c.CertFile, c.KeyFile)
+			errChan <- srv.ListenAndServeTLS(c.CertFile, c.KeyFile)
 		} else {
-			errchan <- srv.ListenAndServe()
+			errChan <- srv.ListenAndServe()
 		}
 	}()
 	select {
@@ -266,7 +266,7 @@ func ListenAndServe(ctx context.Context, c Config) error {
 		)
 		defer cancel()
 		return srv.Shutdown(ctx)
-	case err := <-errchan:
+	case err := <-errChan:
 		return err
 	}
 }

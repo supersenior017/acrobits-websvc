@@ -23,7 +23,7 @@ type Opts struct {
 	config websvc.Config
 }
 
-func parseArgs() *Opts {
+func getOpts() *Opts {
 	opts := &Opts{}
 	isHelp := flag.Bool("h", false, "Print help and exit")
 	isVersion := flag.Bool("V", false, "Print version and exit")
@@ -65,7 +65,7 @@ func getRate(
 }
 
 func main() {
-	opts := parseArgs()
+	opts := getOpts()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
