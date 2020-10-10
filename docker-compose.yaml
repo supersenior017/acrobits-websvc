@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  web:
+    build: ./src/
+    image: 'acrobits-websvc'
+    container_name: acrobits_websvc
+    command: []
+    ports:
+      - '8000:8000'
+    volumes:
+      - './certs/:/usr/src/certs/:ro'
+    env_file:
+      - './config/acrobits-websvc.env'

@@ -1,37 +1,27 @@
-.PHONY: docker
+.PHONY: venv
 
-NAME           := acrobits-websvc
+NAME := acrobits-websvc
+VENV := ./venv
 
-prefix         ?= /usr/local
-exec_prefix    ?= $(prefix)
-bindir         ?= $(exec_prefix)/bin
-sysconfdir     ?= $(prefix)/etc
-srcdir         ?= ./src
+all: venv
 
-confname       := acrobits-websvc.json
-targetdir      := ./target
-target         := $(targetdir)/$(NAME)
-bindestdir     := $(DESTDIR)$(bindir)
-sysconfdestdir := $(DESTDIR)$(sysconfdir)
+define make_venv
+	python3 -m venv --prompt $(NAME) $(1)
+	( \
+		source $(1)/bin/activate; \
+		pip install -r "./src/requirements.txt"; \
+		deactivate; \
+	)
+endef
 
-all: build
-
-build:
-	go build -o $(target) $(srcdir)/
-
-installdirs:
-	install -d $(bindestdir)/ $(sysconfdestdir)/
-
-install: installdirs
-	install $(target) $(bindestdir)/
-	install -b -m 0644 ./config/$(confname) $(sysconfdestdir)/
-
-uninstall:
-	rm -f $(bindestdir)/$(NAME)
-	rm -f $(sysconfdestdir)/$(confname)
+venv:
+	$(call make_venv,$(VENV))
 
 clean:
-	rm -rf $(targetdir)/
+	rm -rf $(VENV)/
 
 docker:
-	docker build -t $(NAME) -f ./docker/Dockerfile "."
+	docker build -t $(NAME) "./src/"
+
+clean-docker:
+	docker rmi $(NAME)
