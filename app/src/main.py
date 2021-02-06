@@ -2,7 +2,7 @@
 Acrobits Web Services
 """
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 from fastapi import (
     FastAPI,
@@ -11,12 +11,17 @@ from fastapi import (
 )
 
 import balance
+import contacts
 import healthcheck
 import rate
 import websvc
 
 
-async def get_balance(account: websvc.Account) -> balance.Balance:
+async def get_balance(params: websvc.Params) -> balance.Balance:
+    raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+async def get_contacts(params: contacts.Params) -> contacts.Contacts:
     raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
@@ -27,9 +32,10 @@ async def get_rate(params: rate.Params) -> rate.Rate:
 def add_handlers(app: FastAPI):
     if not any((
         balance.add_handler(app, get_balance),
+        contacts.add_handler(app, get_contacts),
         rate.add_handler(app, get_rate),
     )):
-        raise RuntimeError('No enabled modules')
+        raise RuntimeError('no enabled modules')
 
     healthcheck.add_handler(app)
 

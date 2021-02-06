@@ -1,1 +1,1 @@
-uvicorn main:app --app-dir ./src/app/ "$@"
+uvicorn main:app --reload --app-dir ./app/src/ "$@"

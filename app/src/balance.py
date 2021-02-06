@@ -16,19 +16,21 @@ from fastapi import (
 from pydantic import (
     BaseModel,
     BaseSettings,
-    Field,
 )
 
+import utils
 import websvc
 
 
 class Settings(BaseSettings):
-    path: str = 'balance'
     currency: str = 'USD'
-    enabled: bool = True
+    enable: bool = True
 
     class Config:
         env_prefix = 'balance_'
+
+
+settings = Settings()
 
 
 class Balance(BaseModel):
@@ -40,10 +42,10 @@ class Response(Balance):
     """
     https://doc.acrobits.net/api/client/balance_checker.html#response
     """
-    balance_string: str = Field(..., alias='balanceString')
+    balance_string: str
 
     @classmethod
-    def make(cls, balance: Balance, settings: Settings) -> Response:
+    def make(cls, balance: Balance) -> Response:
         currency = balance.currency or settings.currency
         return cls(
             balance_string=f'{currency} {balance.balance:.2f}'.lstrip(),
@@ -53,18 +55,18 @@ class Response(Balance):
 
     class Config:
         allow_population_by_field_name = True
+        alias_generator = utils.to_lower_camel_case
 
 
 def add_handler(
     app: FastAPI,
-    fn: Callable[[websvc.Account], Awaitable[Balance]],
+    fn: Callable[[websvc.Params], Awaitable[Balance]],
 ) -> bool:
-    settings = Settings()
-    if not settings.enabled:
+    if not settings.enable:
         return False
 
-    @app.get(f'/{settings.path}', response_model=Response)
-    async def balance(account: websvc.Account = Depends()) -> Response:
-        return Response.make(await fn(account), settings)
+    @app.get('/balance', response_model=Response)
+    async def balance(params: websvc.Params = Depends()) -> Response:
+        return Response.make(await fn(params))
 
     return True

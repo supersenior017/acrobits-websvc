@@ -5,7 +5,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     path: str = 'ping'
-    enabled: bool = False
+    enable: bool = False
 
     class Config:
         env_prefix = 'healthcheck_'
@@ -13,11 +13,11 @@ class Settings(BaseSettings):
 
 def add_handler(app: FastAPI) -> bool:
     settings = Settings()
-    if not settings.enabled:
+    if not settings.enable:
         return False
 
     @app.get(f'/{settings.path}', include_in_schema=False)
-    async def handler() -> PlainTextResponse:
+    async def healthcheck() -> PlainTextResponse:
         return PlainTextResponse('OK')
 
     return True

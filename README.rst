@@ -2,11 +2,16 @@ acrobits-websvc
 ===============
 
 `Acrobits Web Services <https://doc.acrobits.net/api/client/index.html>`_.
-You should overwrite functions in `main.py` file.
+You have to overwrite functions in `main.py` file.
 
 .. code:: python
 
-    async def get_balance(account: websvc.Account) -> balance.Balance:
+    async def get_balance(params: websvc.Params) -> balance.Balance:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
+
+.. code:: python
+
+    async def get_contacts(params: contacts.Params) -> contacts.Contacts:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
 
 .. code:: python
@@ -36,13 +41,7 @@ To run localhost:
 
     $ ./run.sh
 
-To run with docker:
-
-.. code:: sh
-
-    $ docker run --rm -d -p 8000:8000 acrobits-websvc
-
-To run with docker-compose:
+To run in docker:
 
 .. code:: sh
 

@@ -21,23 +21,25 @@ from fastapi import (
 from pydantic import (
     BaseModel,
     BaseSettings,
-    Field,
 )
 
+import utils
 import websvc
 
 
 class Settings(BaseSettings):
-    path: str = 'rate'
     currency: str = '¢'
     specification: str = 'min.'
-    enabled: bool = True
+    enable: bool = True
 
     class Config:
         env_prefix = 'rate_'
 
 
-class Params(websvc.Account):
+settings = Settings()
+
+
+class Params(websvc.Params):
     """
     https://doc.acrobits.net/api/client/rate_checker.html#parameters
     """
@@ -56,7 +58,7 @@ class Rate(BaseModel):
     currency: str = ''
 
 
-def _format_response(rate: Rate, settings: Settings) -> (str, str):
+def _format_response(rate: Rate) -> (str, str):
     call = rate.call
     message = rate.message
     currency = rate.currency or settings.currency
@@ -73,28 +75,29 @@ class ResponseNumber(BaseModel):
     """
     https://doc.acrobits.net/api/client/rate_checker.html#response
     """
-    call_rate_string: str = Field(..., alias='callRateString')
-    message_rate_string: str = Field(..., alias='messageRateString')
+    call_rate_string: str
+    message_rate_string: str
 
     @classmethod
-    def make(cls, rate: Rate, settings: Settings) -> ResponseNumber:
-        call, message = _format_response(rate, settings)
+    def make(cls, rate: Rate) -> ResponseNumber:
+        call, message = _format_response(rate)
         return cls(call_rate_string=call, message_rate_string=message)
 
     class Config:
         allow_population_by_field_name = True
+        alias_generator = utils.to_lower_camel_case
 
 
 class ResponseUri(BaseModel):
     """
     https://doc.acrobits.net/api/client/rate_checker.html#response
     """
-    smart_call_rate_string: str = Field(..., alias='smartCallRateString')
-    smart_message_rate_string: str = Field(..., alias='smartMessageRateString')
+    smart_call_rate_string: str
+    smart_message_rate_string: str
 
     @classmethod
-    def make(cls, rate: Rate, settings: Settings) -> ResponseUri:
-        call, message = _format_response(rate, settings)
+    def make(cls, rate: Rate) -> ResponseUri:
+        call, message = _format_response(rate)
         return cls(
             smart_call_rate_string=call,
             smart_message_rate_string=message,
@@ -102,17 +105,14 @@ class ResponseUri(BaseModel):
 
     class Config:
         allow_population_by_field_name = True
+        alias_generator = utils.to_lower_camel_case
 
 
 def add_handler(app: FastAPI, fn: Callable[[Params], Awaitable[Rate]]) -> bool:
-    settings = Settings()
-    if not settings.enabled:
+    if not settings.enable:
         return False
 
-    @app.get(
-        f'/{settings.path}',
-        response_model=Union[ResponseNumber, ResponseUri],
-    )
+    @app.get('/rate', response_model=Union[ResponseNumber, ResponseUri])
     async def rate(
         params: Params = Depends(),
     ) -> Union[ResponseNumber, ResponseUri]:
@@ -122,6 +122,6 @@ def add_handler(app: FastAPI, fn: Callable[[Params], Awaitable[Rate]]) -> bool:
             resp = ResponseUri
         else:
             raise HTTPException(status.HTTP_400_BAD_REQUEST)
-        return resp.make(await fn(params), settings)
+        return resp.make(await fn(params))
 
     return True

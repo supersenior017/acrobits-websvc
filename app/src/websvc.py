@@ -24,3 +24,8 @@ class Account(BaseModel):
     """
     username: Optional[str] = Query(None)
     password: Optional[str] = Query(None)
+
+
+class Params(Account):
+    nonce: Optional[str] = Query(None)
+    user: Optional[str] = Query(None)
