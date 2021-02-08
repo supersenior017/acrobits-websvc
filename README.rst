@@ -7,17 +7,17 @@ You have to overwrite functions in `main.py` file.
 .. code:: python
 
     async def get_balance(params: websvc.Params) -> balance.Balance:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 .. code:: python
 
     async def get_contacts(params: contacts.Params) -> contacts.Contacts:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 .. code:: python
 
     async def get_rate(params: rate.Params) -> rate.Rate:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 Installation
 ------------
